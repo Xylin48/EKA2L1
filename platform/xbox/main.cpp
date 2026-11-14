@@ -1,16 +1,22 @@
-// Original Xbox nxdk entrypoint smoke test.
-// This only validates the toolchain and a shared memory-policy header.
-#include "../../src/xbox/memory_policy.h"
-#include <cstddef>
-#include <cstdio>
+// Xbox kernel memory-statistics probe; not yet the EKA2L1 emulator.
+#include "memory_probe.h"
+#include <hal/debug.h>
+#include <hal/video.h>
+#include <windows.h>
 
 int main() {
-    constexpr std::size_t mib = 1024u * 1024u;
-    constexpr auto sample = eka2l1::xbox::choose_memory_budget(128u * mib, 16u * mib);
-    static_assert(sample.usable_bytes == 112u * mib,
-                  "Memory budget policy regression");
-    std::printf("EKA2L1 Xbox platform probe; no emulator runtime loaded.\n");
-    std::printf("Example policy only: 128 MiB - 16 MiB = %lu MiB.\n",
-                static_cast<unsigned long>(sample.usable_bytes / mib));
-    return 0;
+    XVideoSetMode(640, 480, 32, REFRESH_DEFAULT);
+    constexpr std::size_t reserve = 16u * 1024u * 1024u;
+    const auto snapshot = eka2l1::xbox::query_runtime_memory(reserve);
+    if (!snapshot.valid) {
+        debugPrint("EKA2L1 Xbox probe: MmQueryStatistics failed.\n");
+    } else {
+        const auto mib = 1024u * 1024u;
+        debugPrint("EKA2L1 Xbox probe: total=%lu MiB available=%lu MiB budget=%lu MiB\n",
+                   static_cast<unsigned long>(snapshot.total_physical_bytes / mib),
+                   static_cast<unsigned long>(snapshot.available_physical_bytes / mib),
+                   static_cast<unsigned long>(snapshot.budget.usable_bytes / mib));
+    }
+    debugPrint("This is a diagnostic probe, not a playable emulator.\n");
+    while (true) Sleep(2000);
 }
