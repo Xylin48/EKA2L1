@@ -37,4 +37,20 @@ constexpr memory_budget choose_memory_budget(std::size_t accessible_bytes,
                 : memory_tier::unsupported;
     return {tier, accessible_bytes, reserve_bytes, usable};
 }
+
+/**
+ * A conservative budget for a runtime memory report.
+ * Total capacity determines the tier; currently free memory limits allocation.
+ * No probe of unverified addresses or assumption of an XeFu handshake.
+ */
+constexpr memory_budget choose_runtime_budget(std::size_t total_bytes,
+                                              std::size_t available_bytes,
+                                              std::size_t reserve_bytes) noexcept {
+    const auto capacity = choose_memory_budget(total_bytes, reserve_bytes);
+    const auto free_after_reserve = available_bytes > reserve_bytes
+        ? available_bytes - reserve_bytes : 0u;
+    const auto bounded = free_after_reserve < capacity.usable_bytes
+        ? free_after_reserve : capacity.usable_bytes;
+    return {capacity.tier, total_bytes, reserve_bytes, bounded};
+}
 } // namespace eka2l1::xbox
