@@ -1,17 +1,35 @@
-# Original Xbox / nxdk build probe
+# Original Xbox / nxdk memory diagnostic
 
-This is a **toolchain smoke test**, not an EKA2L1 port or an Xbox runtime memory detector.
+This is a **toolchain and runtime memory probe**, not a functioning EKA2L1 emulator.
 
-The official [XboxDev nxdk](https://github.com/XboxDev/nxdk) README and getting-started guide describe installing its prerequisites, cloning with submodules, running `bin/activate`, and building projects using its Makefile.
+## Verified API basis
 
-After installing and activating nxdk:
+XboxDev/nxdk's `lib/xboxkrnl/xboxkrnl.h` declares `MmQueryStatistics(PMM_STATISTICS)` and the `MM_STATISTICS` fields `Length`, `TotalPhysicalPages`, and `AvailablePages`. The header defines `PAGE_SIZE` as 4096. The probe uses these public kernel interfaces rather than guessing XeFu-specific addresses or modifying XeFu.
+
+The nxdk README documents installing prerequisites, cloning recursively, activating with `bin/activate`, and running Make in the project directory.
 
 ```sh
-make -C platform/xbox
+# Run from a shell created by nxdk's bin/activate
+cd /path/to/EKA2L1/platform/xbox
+make
 ```
 
-The Makefile deliberately uses `NXDK_DIR` from the nxdk activation environment and includes `$(NXDK_DIR)/Makefile`, as documented by nxdk. The resulting XBE is **only a platform probe** and must not be represented as a functioning emulator.
+## Runtime behavior
 
-The sample's 128 MiB value is a compile-time test fixture, **not** a hardware RAM measurement or a XeFu request. Next work: establish a documented runtime memory query, integrate actual emulation components, and test on target hardware.
+`main.cpp` calls `query_runtime_memory(16 MiB)`, then prints the total physical memory, currently available memory, and bounded usable budget to the nxdk debug output. It remains running for inspection. It does not yet load a game.
 
-No upstream subsystem has been removed or disabled to create this probe. The complete emulator's original CMake build remains unchanged.
+The kernel-reported total determines the 64/128/256 MiB classification; current available pages cap the usable allocation budget. The 16 MiB reserve is a provisional engineering policy, not a measured XeFu requirement. Kernel statistics may not capture every memory-map constraint, fragmentation, or per-title allocation limit; actual allocation testing remains necessary.
+
+A failure of `MmQueryStatistics` results in an invalid snapshot and zero budget. The probe does not request extra memory, patch XeFu, or write to unverified addresses.
+
+## Status and limitations
+
+- Source and nxdk API signatures have been inspected.
+- The XBE has **not** been cross-compiled or executed in this session.
+- Expanded RAM has been reported by the user but not validated by this diagnostic.
+- The emulator's CPU, graphics, audio, input, filesystem, and Symbian service components are **not** integrated.
+- Existing EKA2L1 source and CMake configuration remain unchanged.
+
+## Next validation
+
+Build the XBE with an installed nxdk, inspect any compiler/linker errors, execute it through modified XeFu, and compare the reported physical/available memory under each XeFu configuration. Then add safe allocation verification and integrate the budget with the complete emulator runtime.
