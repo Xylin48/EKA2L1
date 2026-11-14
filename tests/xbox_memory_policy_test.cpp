@@ -33,6 +33,16 @@ int main() {
     assert(zero.tier == memory_tier::unsupported);
     assert(zero.usable_bytes == 0u);
 
+    const auto runtime = choose_runtime_budget(256u * MiB, 80u * MiB, 16u * MiB);
+    assert(runtime.tier == memory_tier::expanded_256mb);
+    assert(runtime.usable_bytes == 64u * MiB);
+
+    const auto underpressure = choose_runtime_budget(128u * MiB, 8u * MiB, 16u * MiB);
+    assert(underpressure.usable_bytes == 0u);
+
+    const auto overreported = choose_runtime_budget(64u * MiB, 256u * MiB, 8u * MiB);
+    assert(overreported.usable_bytes == 56u * MiB);
+
     const auto huge = choose_memory_budget(std::numeric_limits<std::size_t>::max(), 1u);
     assert(huge.usable_bytes == std::numeric_limits<std::size_t>::max() - 1u);
 }
